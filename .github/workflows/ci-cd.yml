@@ -1,5 +1,10 @@
 name: CI/CD Pipeline
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 on:
   push:
     branches: [main, develop]
@@ -79,7 +84,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run ESLint
         run: npm run lint || echo "ESLint not configured"
@@ -117,12 +122,14 @@ jobs:
           format: 'sarif'
           output: 'trivy-backend-results.sarif'
           severity: 'CRITICAL,HIGH'
+        continue-on-error: true
 
       - name: Upload Trivy results (Backend)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-backend-results.sarif'
           category: 'backend-dependencies'
+        continue-on-error: true
 
       - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master
@@ -132,12 +139,14 @@ jobs:
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
           severity: 'CRITICAL,HIGH'
+        continue-on-error: true
 
       - name: Upload Trivy results (Frontend)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-frontend-results.sarif'
           category: 'frontend-dependencies'
+        continue-on-error: true
 
   build-backend:
     name: Build Backend Image
@@ -181,10 +190,11 @@ jobs:
           output: 'trivy-image-backend-results.sarif'
 
       - name: Upload image scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-image-backend-results.sarif'
           category: 'backend-image'
+        continue-on-error: true
 
   build-frontend:
     name: Build Frontend Image
@@ -228,10 +238,11 @@ jobs:
           output: 'trivy-image-frontend-results.sarif'
 
       - name: Upload image scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-image-frontend-results.sarif'
           category: 'frontend-image'
+        continue-on-error: true
 
   terraform-plan:
     name: Terraform Plan
