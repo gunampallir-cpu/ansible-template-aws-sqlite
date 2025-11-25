@@ -1,0 +1,180 @@
+# Default values for ansible-template-backend
+replicaCount: 2
+
+image:
+  repository: ansibletemplateacr001.azurecr.io/ansible-template-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  sidecar.istio.io/inject: "true"
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "5000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+  protocol: TCP
+
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    name: ansible-template-gateway
+    hosts:
+      - "*"
+  virtualService:
+    enabled: true
+    match:
+      - uri:
+          prefix: "/api"
+  destinationRule:
+    enabled: true
+    trafficPolicy:
+      loadBalancer:
+        simple: LEAST_CONN
+      connectionPool:
+        tcp:
+          maxConnections: 100
+        http:
+          http1MaxPendingRequests: 50
+          http2MaxRequests: 100
+          maxRequestsPerConnection: 2
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: api.ansible-template.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+persistence:
+  enabled: true
+  storageClassName: "managed-premium"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  mountPath: /app/database
+
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: PORT
+    value: "5000"
+  - name: DB_PATH
+    value: "/app/database/ansible_download_template.db"
+
+envFrom: []
+
+secrets: {}
+
+configMap: {}
+
+nodeSelector:
+  workload: application
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - ansible-template-backend
+          topologyKey: kubernetes.io/hostname
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: istio-ingressgateway
+      ports:
+        - protocol: TCP
+          port: 5000
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+    - to:
+        - namespaceSelector: {}

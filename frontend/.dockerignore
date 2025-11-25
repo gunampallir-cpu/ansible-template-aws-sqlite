@@ -1,0 +1,35 @@
+# Ignore build artifacts
+build/
+node_modules/
+
+# Docker
+.dockerignore
+Dockerfile*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+src/**/*.test.js
+src/**/*.test.jsx
+src/**/*.spec.js
+src/**/*.spec.jsx
+src/__tests__/
+
+# Documentation
+README.md
+*.md
+
+# Environment
+.env.local
+.env.development
+.env.test
+
+# OS files
+.DS_Store
+Thumbs.db

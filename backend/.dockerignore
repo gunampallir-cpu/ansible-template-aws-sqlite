@@ -1,0 +1,44 @@
+# Ignore node modules
+node_modules/
+
+# Ignore tests
+__tests__/
+*.test.js
+*.spec.js
+
+# Ignore documentation
+README.md
+*.md
+
+# Ignore development files
+.env.example
+nodemon.json
+
+# Ignore Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.dockerignore
+Dockerfile*
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database (will be mounted as volume)
+database/*.db
+database/*.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp

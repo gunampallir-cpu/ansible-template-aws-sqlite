@@ -1,0 +1,29 @@
+{{- if .Values.istio.enabled }}
+{{- if .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "frontend.fullname" . }}
+  labels:
+    {{- include "frontend.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - {{ .Values.istio.gateway.name }}
+  http:
+    - match:
+        {{- toYaml .Values.istio.virtualService.match | nindent 8 }}
+      route:
+        - destination:
+            host: {{ include "frontend.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+          weight: 100
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+{{- end }}
+{{- end }}

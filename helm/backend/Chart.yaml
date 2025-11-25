@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ansible-template-backend
+description: Helm chart for Ansible Template Backend API
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - nodejs
+  - api
+  - ansible
+maintainers:
+  - name: gunampalli
+    email: gunampalli@example.com
