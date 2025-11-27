@@ -341,8 +341,20 @@ jobs:
           # Import Node Group
           terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group" 2>/dev/null || echo "Node group already in state or doesn't exist"
           
+          # Import Load Balancer Controller IAM Policy
+          terraform import aws_iam_policy.aws_load_balancer_controller "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):policy/AWSLoadBalancerControllerIAMPolicy" 2>/dev/null || echo "IAM policy already in state or doesn't exist"
+          
           # Import Load Balancer Controller Role
           terraform import aws_iam_role.aws_load_balancer_controller "ansible-template-aws-load-balancer-controller" 2>/dev/null || echo "IAM role already in state or doesn't exist"
+          
+          # Import Load Balancer Controller Role Policy Attachment
+          terraform import aws_iam_role_policy_attachment.aws_load_balancer_controller "ansible-template-aws-load-balancer-controller/arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):policy/AWSLoadBalancerControllerIAMPolicy" 2>/dev/null || echo "Policy attachment already in state or doesn't exist"
+          
+          # Import EKS Addons
+          terraform import aws_eks_addon.vpc_cni "ansible-template-eks:vpc-cni" 2>/dev/null || echo "vpc-cni addon already in state or doesn't exist"
+          terraform import aws_eks_addon.coredns "ansible-template-eks:coredns" 2>/dev/null || echo "coredns addon already in state or doesn't exist"
+          terraform import aws_eks_addon.kube_proxy "ansible-template-eks:kube-proxy" 2>/dev/null || echo "kube-proxy addon already in state or doesn't exist"
+          terraform import aws_eks_addon.ebs_csi_driver "ansible-template-eks:aws-ebs-csi-driver" 2>/dev/null || echo "ebs-csi-driver addon already in state or doesn't exist"
         continue-on-error: true
 
       - name: Terraform Format Check
