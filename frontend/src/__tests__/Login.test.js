@@ -5,6 +5,9 @@ import '@testing-library/jest-dom';
 import Login from '../components/Login';
 import { AuthProvider } from '../contexts/AuthContext';
 
+// Mock axios
+jest.mock('axios');
+
 const MockLogin = () => (
   <BrowserRouter>
     <AuthProvider>
