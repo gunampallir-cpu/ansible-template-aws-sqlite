@@ -370,14 +370,16 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.28.0'
+        run: |
+          curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: '3.13.0'
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version
 
       - name: Update kubeconfig
         run: |
@@ -438,14 +440,18 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.28.0'
+        run: |
+          curl -LO "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+        continue-on-error: true
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: '3.13.0'
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version
+        continue-on-error: true
 
       - name: Update kubeconfig
         run: |
