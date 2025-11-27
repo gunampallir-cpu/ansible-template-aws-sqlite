@@ -2,7 +2,7 @@
 replicaCount: 2
 
 image:
-  repository: ansibletemplateacr001.azurecr.io/ansible-template-backend
+  repository: 995995866018.dkr.ecr.us-east-1.amazonaws.com/backend
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -114,7 +114,7 @@ readinessProbe:
 
 persistence:
   enabled: true
-  storageClassName: "managed-premium"
+  storageClassName: "gp3"
   accessMode: ReadWriteOnce
   size: 1Gi
   mountPath: /app/database

@@ -442,28 +442,17 @@ npm install
 Copy-Item backend\database\ansible_download_template.db backend\database\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').db
 ```
 
-## ☁️ Azure Cloud Deployment
+## ☁️ Cloud Deployment
 
-### Quick Start with Docker
+This application supports deployment to both **Azure** and **AWS** cloud platforms with production-ready infrastructure.
 
-```powershell
-# Build and run with Docker Compose
-docker-compose up -d
+### Azure Deployment
 
-# View logs
-docker-compose logs -f
-
-# Stop containers
-docker-compose down
-```
-
-### Full Azure Deployment
-
-For complete production deployment to Azure with AKS, follow the comprehensive guide:
+Deploy to Azure with AKS (Azure Kubernetes Service) and ACR (Azure Container Registry).
 
 📖 **[Azure Deployment Guide](AZURE_DEPLOYMENT.md)**
 
-#### Overview:
+#### Quick Start - Azure:
 1. **Setup GitHub Secrets**: Run `scripts\setup-github-secrets.ps1`
 2. **Push to GitHub**: Code automatically deploys via GitHub Actions
 3. **Infrastructure**: Terraform provisions ACR + AKS with Istio
@@ -471,7 +460,7 @@ For complete production deployment to Azure with AKS, follow the comprehensive g
 5. **Deployment**: Helm charts deploy to Kubernetes
 6. **Monitoring**: Azure Monitor and Log Analytics enabled
 
-#### Quick Commands:
+#### Azure Quick Commands:
 
 ```powershell
 # Setup Azure authentication and GitHub secrets
@@ -484,6 +473,54 @@ git push origin main
 
 # Monitor deployment
 # Visit: https://github.com/gunampallir-cpu/ansible-template-sqlite/actions
+```
+
+### AWS Deployment
+
+Deploy to AWS with EKS (Elastic Kubernetes Service) and ECR (Elastic Container Registry).
+
+📖 **[AWS Deployment Guide](AWS_DEPLOYMENT.md)**
+
+#### Quick Start - AWS:
+1. **Configure AWS CLI**: Run `aws configure` with your credentials
+2. **Setup GitHub Secrets**: Run `scripts/setup-aws-github-secrets.sh`
+3. **Create S3 Backend**: For Terraform state storage
+4. **Push to GitHub**: Automated deployment via GitHub Actions
+5. **Infrastructure**: Terraform provisions ECR + EKS with Istio
+6. **Monitoring**: CloudWatch logs and metrics enabled
+
+#### AWS Quick Commands:
+
+```bash
+# Configure AWS credentials
+aws configure
+
+# Setup GitHub secrets
+chmod +x scripts/setup-aws-github-secrets.sh
+./scripts/setup-aws-github-secrets.sh
+
+# Push to GitHub to trigger deployment
+git add .
+git commit -m "Deploy to AWS"
+git push origin main
+
+# Monitor deployment
+# Visit: https://github.com/gunampallir-cpu/ansible-template-aws-sqlite/actions
+```
+
+### Quick Start with Docker
+
+For local testing with containers:
+
+```powershell
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop containers
+docker-compose down
 ```
 
 ### Manual Terraform Deployment
@@ -515,8 +552,10 @@ kubectl get pods -n ansible-template
 
 ### Documentation
 
-- **[Azure Deployment Guide](AZURE_DEPLOYMENT.md)** - Complete Azure setup
-- **[Terraform README](terraform/README.md)** - Infrastructure details
+- **[Azure Deployment Guide](AZURE_DEPLOYMENT.md)** - Complete Azure setup with AKS
+- **[AWS Deployment Guide](AWS_DEPLOYMENT.md)** - Complete AWS setup with EKS
+- **[Terraform Azure README](terraform/README.md)** - Azure infrastructure details
+- **[Terraform AWS README](terraform-aws/README.md)** - AWS infrastructure details
 - **[Helm Charts README](helm/README.md)** - Kubernetes deployment
 - **[API Documentation](API_DOCUMENTATION.md)** - REST API reference
 

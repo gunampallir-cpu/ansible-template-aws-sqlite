@@ -2,7 +2,7 @@
 replicaCount: 2
 
 image:
-  repository: ansibletemplateacr001.azurecr.io/ansible-template-frontend
+  repository: 995995866018.dkr.ecr.us-east-1.amazonaws.com/frontend
   pullPolicy: IfNotPresent
   tag: "latest"
 

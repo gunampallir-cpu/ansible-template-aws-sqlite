@@ -1,0 +1,138 @@
+# EKS Cluster
+
+resource "aws_eks_cluster" "main" {
+  name     = "${var.project_name}-eks"
+  role_arn = aws_iam_role.eks_cluster.arn
+  version  = var.eks_cluster_version
+
+  vpc_config {
+    subnet_ids              = concat(aws_subnet.private[*].id, aws_subnet.public[*].id)
+    endpoint_private_access = true
+    endpoint_public_access  = true
+    security_group_ids      = [aws_security_group.eks_cluster.id]
+  }
+
+  enabled_cluster_log_types = var.enable_cloudwatch_logs ? [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ] : []
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_iam_role_policy_attachment.eks_vpc_resource_controller,
+  ]
+
+  tags = {
+    Name = "${var.project_name}-eks"
+  }
+}
+
+# OIDC Provider for EKS
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
+
+  tags = {
+    Name = "${var.project_name}-eks-oidc"
+  }
+}
+
+# EKS Node Group
+resource "aws_eks_node_group" "main" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "${var.project_name}-node-group"
+  node_role_arn   = aws_iam_role.eks_nodes.arn
+  subnet_ids      = aws_subnet.private[*].id
+
+  instance_types = var.eks_node_instance_types
+  disk_size      = var.eks_node_disk_size
+
+  scaling_config {
+    desired_size = var.eks_node_desired_size
+    max_size     = var.eks_node_max_size
+    min_size     = var.eks_node_min_size
+  }
+
+  update_config {
+    max_unavailable = 1
+  }
+
+  labels = {
+    role = "worker"
+  }
+
+  tags = {
+    Name = "${var.project_name}-node-group"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_container_registry_policy,
+  ]
+
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes        = [scaling_config[0].desired_size]
+  }
+}
+
+# EKS Add-ons
+resource "aws_eks_addon" "vpc_cni" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "vpc-cni"
+  addon_version = "v1.15.1-eksbuild.1"
+
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+resource "aws_eks_addon" "coredns" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "coredns"
+  addon_version = "v1.10.1-eksbuild.6"
+
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+resource "aws_eks_addon" "kube_proxy" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "kube-proxy"
+  addon_version = "v1.28.2-eksbuild.2"
+
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+resource "aws_eks_addon" "ebs_csi_driver" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "aws-ebs-csi-driver"
+  addon_version = "v1.26.1-eksbuild.1"
+
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+# CloudWatch Log Group for EKS
+resource "aws_cloudwatch_log_group" "eks" {
+  count             = var.enable_cloudwatch_logs ? 1 : 0
+  name              = "/aws/eks/${var.project_name}-eks/cluster"
+  retention_in_days = var.log_retention_days
+
+  tags = {
+    Name = "${var.project_name}-eks-logs"
+  }
+}
