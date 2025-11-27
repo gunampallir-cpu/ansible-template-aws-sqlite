@@ -327,6 +327,24 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Import Existing Resources
+        run: |
+          # Import existing resources if they exist (ignore errors if already in state)
+          
+          # Import OIDC Provider
+          OIDC_URL=$(aws eks describe-cluster --name ansible-template-eks --query 'cluster.identity.oidc.issuer' --output text 2>/dev/null | sed 's|https://||' || echo "")
+          if [ ! -z "$OIDC_URL" ]; then
+            OIDC_ARN="arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/${OIDC_URL}"
+            terraform import aws_iam_openid_connect_provider.eks "$OIDC_ARN" 2>/dev/null || echo "OIDC provider already in state or doesn't exist"
+          fi
+          
+          # Import Node Group
+          terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group" 2>/dev/null || echo "Node group already in state or doesn't exist"
+          
+          # Import Load Balancer Controller Role
+          terraform import aws_iam_role.aws_load_balancer_controller "ansible-template-aws-load-balancer-controller" 2>/dev/null || echo "IAM role already in state or doesn't exist"
+        continue-on-error: true
+
       - name: Terraform Format Check
         run: terraform fmt -check || true
 
@@ -438,24 +456,6 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-
-      - name: Import Existing Resources
-        run: |
-          # Import existing resources if they exist (ignore errors if already in state)
-          
-          # Import OIDC Provider
-          OIDC_URL=$(aws eks describe-cluster --name ansible-template-eks --query 'cluster.identity.oidc.issuer' --output text 2>/dev/null | sed 's|https://||' || echo "")
-          if [ ! -z "$OIDC_URL" ]; then
-            OIDC_ARN="arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/${OIDC_URL}"
-            terraform import aws_iam_openid_connect_provider.eks "$OIDC_ARN" 2>/dev/null || echo "OIDC provider already in state or doesn't exist"
-          fi
-          
-          # Import Node Group
-          terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group" 2>/dev/null || echo "Node group already in state or doesn't exist"
-          
-          # Import Load Balancer Controller Role
-          terraform import aws_iam_role.aws_load_balancer_controller "ansible-template-aws-load-balancer-controller" 2>/dev/null || echo "IAM role already in state or doesn't exist"
-        continue-on-error: true
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
