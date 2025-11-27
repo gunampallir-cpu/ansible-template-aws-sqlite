@@ -350,11 +350,9 @@ jobs:
           # Import Load Balancer Controller Role Policy Attachment
           terraform import aws_iam_role_policy_attachment.aws_load_balancer_controller "ansible-template-aws-load-balancer-controller/arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):policy/AWSLoadBalancerControllerIAMPolicy" 2>/dev/null || echo "Policy attachment already in state or doesn't exist"
           
-          # Import EKS Addons
+          # Import EKS Addons (only vpc-cni and kube-proxy, skip coredns and ebs-csi-driver)
           terraform import aws_eks_addon.vpc_cni "ansible-template-eks:vpc-cni" 2>/dev/null || echo "vpc-cni addon already in state or doesn't exist"
-          terraform import aws_eks_addon.coredns "ansible-template-eks:coredns" 2>/dev/null || echo "coredns addon already in state or doesn't exist"
           terraform import aws_eks_addon.kube_proxy "ansible-template-eks:kube-proxy" 2>/dev/null || echo "kube-proxy addon already in state or doesn't exist"
-          terraform import aws_eks_addon.ebs_csi_driver "ansible-template-eks:aws-ebs-csi-driver" 2>/dev/null || echo "ebs-csi-driver addon already in state or doesn't exist"
         continue-on-error: true
 
       - name: Terraform Format Check
