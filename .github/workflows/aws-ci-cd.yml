@@ -323,23 +323,6 @@ jobs:
           else
             echo "S3 bucket already exists"
           fi
-          
-          # Create DynamoDB table for state locking if it doesn't exist
-          if ! aws dynamodb describe-table --table-name ansible-template-tfstate-lock --region us-east-1 2>/dev/null; then
-            echo "Creating DynamoDB table for state locking..."
-            aws dynamodb create-table \
-              --table-name ansible-template-tfstate-lock \
-              --attribute-definitions AttributeName=LockID,AttributeType=S \
-              --key-schema AttributeName=LockID,KeyType=HASH \
-              --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
-              --region us-east-1
-            
-            echo "Waiting for DynamoDB table to be active..."
-            aws dynamodb wait table-exists --table-name ansible-template-tfstate-lock --region us-east-1
-            echo "DynamoDB table created successfully"
-          else
-            echo "DynamoDB table already exists"
-          fi
 
       - name: Terraform Init
         run: terraform init
@@ -451,23 +434,6 @@ jobs:
             echo "S3 bucket created successfully"
           else
             echo "S3 bucket already exists"
-          fi
-          
-          # Create DynamoDB table for state locking if it doesn't exist
-          if ! aws dynamodb describe-table --table-name ansible-template-tfstate-lock --region us-east-1 2>/dev/null; then
-            echo "Creating DynamoDB table for state locking..."
-            aws dynamodb create-table \
-              --table-name ansible-template-tfstate-lock \
-              --attribute-definitions AttributeName=LockID,AttributeType=S \
-              --key-schema AttributeName=LockID,KeyType=HASH \
-              --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
-              --region us-east-1
-            
-            echo "Waiting for DynamoDB table to be active..."
-            aws dynamodb wait table-exists --table-name ansible-template-tfstate-lock --region us-east-1
-            echo "DynamoDB table created successfully"
-          else
-            echo "DynamoDB table already exists"
           fi
 
       - name: Terraform Init
