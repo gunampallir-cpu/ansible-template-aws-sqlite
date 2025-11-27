@@ -5,9 +5,6 @@ import '@testing-library/jest-dom';
 import TemplateGenerator from '../components/TemplateGenerator';
 import { AuthProvider } from '../contexts/AuthContext';
 
-// Mock axios
-jest.mock('axios');
-
 // Mock the API
 jest.mock('../services/api', () => ({
   ansibleRolesAPI: {

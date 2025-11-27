@@ -3,9 +3,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from '../App';
 import { AuthProvider } from '../contexts/AuthContext';
 
-// Mock axios
-jest.mock('axios');
-
 // Mock components
 jest.mock('../components/Login', () => () => <div>Login Component</div>);
 jest.mock('../components/TemplateGenerator', () => () => <div>Template Generator</div>);
