@@ -22,7 +22,7 @@ ecr_repositories         = ["ansible-template-frontend", "ansible-template-backe
 ecr_image_retention_count = 10
 
 # Istio Configuration
-enable_istio    = true
+enable_istio    = false
 istio_version   = "1.20.0"
 
 # Monitoring
