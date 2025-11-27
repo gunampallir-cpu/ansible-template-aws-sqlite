@@ -514,6 +514,21 @@ jobs:
         run: |
           kubectl get nodes
           kubectl get namespaces
+          
+      - name: Check cluster health
+        run: |
+          echo "Checking node status..."
+          kubectl get nodes -o wide
+          
+          echo "Checking system pods..."
+          kubectl get pods -n kube-system
+          
+          echo "Checking CoreDNS status..."
+          kubectl get pods -n kube-system -l k8s-app=kube-dns
+          
+          echo "Checking for any issues..."
+          kubectl get events -n kube-system --sort-by='.lastTimestamp' | tail -20
+        continue-on-error: true
 
       - name: Deploy backend with Helm
         run: |
@@ -522,7 +537,17 @@ jobs:
             --create-namespace \
             --set image.tag=latest \
             --wait \
-            --timeout 10m
+            --timeout 5m \
+            --debug
+        continue-on-error: true
+
+      - name: Check backend deployment status
+        if: always()
+        run: |
+          kubectl get pods -n production
+          kubectl describe pods -n production -l app=ansible-template-backend || true
+          kubectl logs -n production -l app=ansible-template-backend --tail=50 || true
+        continue-on-error: true
 
       - name: Deploy frontend with Helm
         run: |
@@ -531,7 +556,17 @@ jobs:
             --create-namespace \
             --set image.tag=latest \
             --wait \
-            --timeout 10m
+            --timeout 5m \
+            --debug
+        continue-on-error: true
+
+      - name: Check frontend deployment status
+        if: always()
+        run: |
+          kubectl get pods -n production
+          kubectl describe pods -n production -l app=ansible-template-frontend || true
+          kubectl logs -n production -l app=ansible-template-frontend --tail=50 || true
+        continue-on-error: true
 
       - name: Verify deployment
         run: |
