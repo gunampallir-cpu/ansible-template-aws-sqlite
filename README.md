@@ -1,6 +1,16 @@
 # Ansible Template Downloader
 
-A comprehensive full-stack web application for generating and downloading Ansible templates with automated directory structure, playbooks, and GitLab CI configuration. Includes production-ready Azure deployment with Kubernetes, Docker, Terraform, and CI/CD pipelines.
+A comprehensive full-stack web application for generating and downloading Ansible templates with automated directory structure, playbooks, and GitLab CI configuration. Includes production-ready AWS deployment with Kubernetes, Docker, Terraform, and CI/CD pipelines.
+
+## ⚠️ IMPORTANT: First-Time Setup
+
+**If you're setting up this repository for the first time**, you need to configure AWS credentials in GitHub Secrets:
+
+📖 **[→ Follow the GitHub Setup Guide](./GITHUB_SETUP.md)** to configure AWS credentials and enable the CI/CD pipeline.
+
+**Current Status**: The GitHub Actions workflow is failing because AWS credentials are not configured. This is expected for a new repository clone.
+
+---
 
 ## 🚀 Features
 
