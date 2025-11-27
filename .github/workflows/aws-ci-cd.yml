@@ -22,6 +22,11 @@ env:
   BACKEND_ECR_REPO: backend
   FRONTEND_ECR_REPO: frontend
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 jobs:
   code-quality:
     name: Code Quality Checks
