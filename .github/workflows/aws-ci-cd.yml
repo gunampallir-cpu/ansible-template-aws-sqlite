@@ -497,7 +497,6 @@ jobs:
             
             echo ""
             echo "🔄 Node group needs to be recreated. Marking for replacement..."
-            cd terraform-aws
             terraform state list | grep aws_eks_node_group.main && \
               terraform taint aws_eks_node_group.main || \
               echo "Node group not in state or already tainted"
