@@ -574,10 +574,20 @@ jobs:
           kubectl get services -n production
           kubectl get ingress -n production || echo "No ingress found"
 
-      - name: Get Istio Gateway URL
+      - name: Get application endpoints
         run: |
-          echo "Getting Istio Ingress Gateway URL..."
-          kubectl get svc -n istio-ingress istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          echo "Getting service endpoints..."
+          kubectl get svc -n production -o wide
+          
+          # Check if Istio is installed
+          if kubectl get namespace istio-ingress 2>/dev/null; then
+            echo "Getting Istio Ingress Gateway URL..."
+            kubectl get svc -n istio-ingress istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "Istio gateway not ready"
+          else
+            echo "Istio is not installed, checking for LoadBalancer services..."
+            kubectl get svc -n production --field-selector spec.type=LoadBalancer
+          fi
+        continue-on-error: true
 
   destroy-infrastructure:
     name: Destroy Infrastructure
