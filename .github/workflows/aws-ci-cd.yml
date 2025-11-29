@@ -473,9 +473,11 @@ jobs:
           name: tfplan
           path: terraform-aws/
 
-      - name: Check Node Group Health
+      - name: Check Node Group Health and State
         run: |
-          echo "=== Checking Node Group Status ==="
+          echo "=== Checking Node Group Status and State ==="
+          
+          # Check if node group exists in AWS
           NODEGROUP_STATUS=$(aws eks describe-nodegroup \
             --cluster-name ansible-template-eks \
             --nodegroup-name ansible-template-node-group \
@@ -483,9 +485,30 @@ jobs:
             --query 'nodegroup.status' \
             --output text 2>&1 || echo "NOT_FOUND")
           
-          echo "Node Group Status: $NODEGROUP_STATUS"
+          echo "📊 Node Group Status in AWS: $NODEGROUP_STATUS"
           
-          if [[ "$NODEGROUP_STATUS" == "DEGRADED" ]] || [[ "$NODEGROUP_STATUS" == "CREATE_FAILED" ]] || [[ "$NODEGROUP_STATUS" == "DELETE_FAILED" ]]; then
+          # Check if node group exists in Terraform state
+          if terraform state list | grep -q "aws_eks_node_group.main"; then
+            echo "✅ Node group found in Terraform state"
+            IN_STATE=true
+          else
+            echo "❌ Node group NOT in Terraform state"
+            IN_STATE=false
+          fi
+          
+          # Handle different scenarios
+          if [[ "$NODEGROUP_STATUS" != "NOT_FOUND" ]] && [[ "$IN_STATE" == "false" ]]; then
+            echo "🔄 Node group exists in AWS but not in state - importing..."
+            terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group" || {
+              echo "⚠️ Import failed, checking if it's a state sync issue..."
+              terraform refresh
+            }
+            
+            # Regenerate plan after import
+            echo "📝 Regenerating plan after import..."
+            terraform plan -out=tfplan
+            
+          elif [[ "$NODEGROUP_STATUS" == "DEGRADED" ]] || [[ "$NODEGROUP_STATUS" == "CREATE_FAILED" ]] || [[ "$NODEGROUP_STATUS" == "DELETE_FAILED" ]]; then
             echo "⚠️ Node group is in unhealthy state: $NODEGROUP_STATUS"
             echo "Checking health issues..."
             aws eks describe-nodegroup \
@@ -496,17 +519,31 @@ jobs:
               --output json
             
             echo ""
-            echo "🔄 Node group needs to be recreated. Marking for replacement..."
-            terraform state list | grep aws_eks_node_group.main && \
-              terraform taint aws_eks_node_group.main || \
-              echo "Node group not in state or already tainted"
+            echo "🔄 Tainting node group to force recreation..."
             
-            echo "Regenerating plan with node group replacement..."
+            if [[ "$IN_STATE" == "true" ]]; then
+              terraform taint aws_eks_node_group.main
+            else
+              echo "⚠️ Node group not in state, importing first..."
+              terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group"
+              terraform taint aws_eks_node_group.main
+            fi
+            
+            # Regenerate plan with tainted resource
+            echo "📝 Regenerating plan with node group marked for recreation..."
             terraform plan -out=tfplan
+            
           elif [[ "$NODEGROUP_STATUS" == "ACTIVE" ]]; then
-            echo "✓ Node group is ACTIVE, proceeding with update"
+            echo "✅ Node group is ACTIVE"
+            if [[ "$IN_STATE" == "false" ]]; then
+              echo "🔄 Importing active node group..."
+              terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group"
+              terraform plan -out=tfplan
+            fi
+          elif [[ "$NODEGROUP_STATUS" == "NOT_FOUND" ]]; then
+            echo "ℹ️ Node group not found in AWS, will be created"
           else
-            echo "Node group status: $NODEGROUP_STATUS"
+            echo "ℹ️ Node group status: $NODEGROUP_STATUS"
           fi
         continue-on-error: false
 
