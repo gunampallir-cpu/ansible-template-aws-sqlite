@@ -467,13 +467,8 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: terraform-aws/
-
       - name: Check Node Group Health and State
+        id: nodegroup_check
         run: |
           echo "=== Checking Node Group Status and State ==="
           
@@ -497,6 +492,8 @@ jobs:
           fi
           
           # Handle different scenarios
+          NEED_NEW_PLAN=false
+          
           if [[ "$NODEGROUP_STATUS" != "NOT_FOUND" ]] && [[ "$IN_STATE" == "false" ]]; then
             echo "🔄 Node group exists in AWS but not in state - importing..."
             terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group" || {
@@ -504,9 +501,7 @@ jobs:
               terraform refresh
             }
             
-            # Regenerate plan after import
-            echo "📝 Regenerating plan after import..."
-            terraform plan -out=tfplan
+            NEED_NEW_PLAN=true
             
           elif [[ "$NODEGROUP_STATUS" == "DEGRADED" ]] || [[ "$NODEGROUP_STATUS" == "CREATE_FAILED" ]] || [[ "$NODEGROUP_STATUS" == "DELETE_FAILED" ]]; then
             echo "⚠️ Node group is in unhealthy state: $NODEGROUP_STATUS"
@@ -529,23 +524,37 @@ jobs:
               terraform taint aws_eks_node_group.main
             fi
             
-            # Regenerate plan with tainted resource
-            echo "📝 Regenerating plan with node group marked for recreation..."
-            terraform plan -out=tfplan
+            NEED_NEW_PLAN=true
             
           elif [[ "$NODEGROUP_STATUS" == "ACTIVE" ]]; then
             echo "✅ Node group is ACTIVE"
             if [[ "$IN_STATE" == "false" ]]; then
               echo "🔄 Importing active node group..."
               terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group"
-              terraform plan -out=tfplan
+              NEED_NEW_PLAN=true
             fi
           elif [[ "$NODEGROUP_STATUS" == "NOT_FOUND" ]]; then
             echo "ℹ️ Node group not found in AWS, will be created"
           else
             echo "ℹ️ Node group status: $NODEGROUP_STATUS"
           fi
+          
+          # Set output for conditional plan download
+          echo "need_new_plan=$NEED_NEW_PLAN" >> $GITHUB_OUTPUT
         continue-on-error: false
+
+      - name: Download Terraform Plan
+        if: steps.nodegroup_check.outputs.need_new_plan == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform-aws/
+
+      - name: Generate New Plan
+        if: steps.nodegroup_check.outputs.need_new_plan == 'true'
+        run: |
+          echo "📝 Generating new plan after state changes..."
+          terraform plan -out=tfplan
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
