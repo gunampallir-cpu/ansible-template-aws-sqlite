@@ -510,24 +510,48 @@ jobs:
         run: |
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
 
-      - name: Verify cluster access
+      - name: Verify cluster access and diagnose node issues
         run: |
-          kubectl get nodes
+          echo "=== EKS Cluster Information ==="
+          aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --query 'cluster.{Name:name,Status:status,Version:version,Endpoint:endpoint}' --output table
+          
+          echo ""
+          echo "=== Node Groups ==="
+          aws eks list-nodegroups --cluster-name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+          
+          echo ""
+          echo "=== Node Group Details ==="
+          for nodegroup in $(aws eks list-nodegroups --cluster-name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }} --query 'nodegroups[]' --output text); do
+            echo "Node Group: $nodegroup"
+            aws eks describe-nodegroup --cluster-name ${{ env.EKS_CLUSTER_NAME }} --nodegroup-name $nodegroup --region ${{ env.AWS_REGION }} --query 'nodegroup.{Status:status,DesiredSize:scalingConfig.desiredSize,MinSize:scalingConfig.minSize,MaxSize:scalingConfig.maxSize,Health:health}' --output table
+          done
+          
+          echo ""
+          echo "=== Kubernetes Nodes ==="
+          kubectl get nodes -o wide || echo "⚠️ NO NODES FOUND IN CLUSTER"
+          
+          echo ""
+          echo "=== Node Group EC2 Instances ==="
+          aws ec2 describe-instances --region ${{ env.AWS_REGION }} \
+            --filters "Name=tag:eks:cluster-name,Values=${{ env.EKS_CLUSTER_NAME }}" \
+            --query 'Reservations[].Instances[].[InstanceId,State.Name,InstanceType,PrivateIpAddress,LaunchTime]' \
+            --output table || echo "No EC2 instances found"
+          
+          echo ""
+          echo "=== Namespaces ==="
           kubectl get namespaces
+        continue-on-error: true
           
       - name: Check cluster health
         run: |
-          echo "Checking node status..."
-          kubectl get nodes -o wide
-          
           echo "Checking system pods..."
-          kubectl get pods -n kube-system
+          kubectl get pods -n kube-system -o wide || echo "No kube-system pods"
           
           echo "Checking CoreDNS status..."
-          kubectl get pods -n kube-system -l k8s-app=kube-dns
+          kubectl get pods -n kube-system -l k8s-app=kube-dns || echo "No CoreDNS pods"
           
           echo "Checking for any issues..."
-          kubectl get events -n kube-system --sort-by='.lastTimestamp' | tail -20
+          kubectl get events -n kube-system --sort-by='.lastTimestamp' | tail -20 || echo "No events found"
         continue-on-error: true
 
       - name: Deploy backend with Helm
@@ -544,9 +568,23 @@ jobs:
       - name: Check backend deployment status
         if: always()
         run: |
-          kubectl get pods -n production
-          kubectl describe pods -n production -l app=ansible-template-backend || true
-          kubectl logs -n production -l app=ansible-template-backend --tail=50 || true
+          echo "=== Backend Pods ==="
+          kubectl get pods -n production -l app.kubernetes.io/name=ansible-template-backend -o wide
+          
+          echo ""
+          echo "=== Pod Events (to see why pods are Pending) ==="
+          kubectl get events -n production --field-selector involvedObject.kind=Pod --sort-by='.lastTimestamp' | tail -30
+          
+          echo ""
+          echo "=== Describe Pending Pods ==="
+          for pod in $(kubectl get pods -n production -l app.kubernetes.io/name=ansible-template-backend -o jsonpath='{.items[?(@.status.phase=="Pending")].metadata.name}'); do
+            echo "Pod: $pod"
+            kubectl describe pod $pod -n production
+          done || echo "No pending backend pods or describe failed"
+          
+          echo ""
+          echo "=== Pod Logs (if any) ==="
+          kubectl logs -n production -l app.kubernetes.io/name=ansible-template-backend --tail=50 --all-containers=true || echo "No logs available"
         continue-on-error: true
 
       - name: Deploy frontend with Helm
@@ -563,9 +601,19 @@ jobs:
       - name: Check frontend deployment status
         if: always()
         run: |
-          kubectl get pods -n production
-          kubectl describe pods -n production -l app=ansible-template-frontend || true
-          kubectl logs -n production -l app=ansible-template-frontend --tail=50 || true
+          echo "=== Frontend Pods ==="
+          kubectl get pods -n production -l app.kubernetes.io/name=ansible-template-frontend -o wide
+          
+          echo ""
+          echo "=== Describe Pending Pods ==="
+          for pod in $(kubectl get pods -n production -l app.kubernetes.io/name=ansible-template-frontend -o jsonpath='{.items[?(@.status.phase=="Pending")].metadata.name}'); do
+            echo "Pod: $pod"
+            kubectl describe pod $pod -n production
+          done || echo "No pending frontend pods or describe failed"
+          
+          echo ""
+          echo "=== Pod Logs (if any) ==="
+          kubectl logs -n production -l app.kubernetes.io/name=ansible-template-frontend --tail=50 --all-containers=true || echo "No logs available"
         continue-on-error: true
 
       - name: Verify deployment
