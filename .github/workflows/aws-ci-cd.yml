@@ -585,7 +585,7 @@ jobs:
             kubectl get svc -n istio-ingress istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "Istio gateway not ready"
           else
             echo "Istio is not installed, checking for LoadBalancer services..."
-            kubectl get svc -n production --field-selector spec.type=LoadBalancer
+            kubectl get svc -n production -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer") | "\(.metadata.name): \(.status.loadBalancer.ingress[0].hostname // .status.loadBalancer.ingress[0].ip // "pending")"' || echo "No LoadBalancer services found"
           fi
         continue-on-error: true
 

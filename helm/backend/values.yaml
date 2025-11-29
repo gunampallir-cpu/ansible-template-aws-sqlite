@@ -16,7 +16,7 @@ serviceAccount:
   name: ""
 
 podAnnotations:
-  sidecar.istio.io/inject: "true"
+  sidecar.istio.io/inject: "false"
   prometheus.io/scrape: "true"
   prometheus.io/port: "5000"
   prometheus.io/path: "/metrics"
@@ -113,7 +113,7 @@ readinessProbe:
   failureThreshold: 3
 
 persistence:
-  enabled: true
+  enabled: false
   storageClassName: "gp3"
   accessMode: ReadWriteOnce
   size: 1Gi
