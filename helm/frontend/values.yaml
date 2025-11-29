@@ -142,8 +142,7 @@ configMap:
         }
     }
 
-nodeSelector:
-  workload: application
+nodeSelector: {}
 
 tolerations: []
 

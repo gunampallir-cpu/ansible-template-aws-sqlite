@@ -66,7 +66,8 @@ resource "aws_eks_node_group" "main" {
   }
 
   labels = {
-    role = "worker"
+    role        = "worker"
+    workload    = "application"
   }
 
   tags = {
