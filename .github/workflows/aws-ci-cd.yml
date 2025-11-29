@@ -473,6 +473,44 @@ jobs:
           name: tfplan
           path: terraform-aws/
 
+      - name: Check Node Group Health
+        run: |
+          echo "=== Checking Node Group Status ==="
+          NODEGROUP_STATUS=$(aws eks describe-nodegroup \
+            --cluster-name ansible-template-eks \
+            --nodegroup-name ansible-template-node-group \
+            --region us-east-1 \
+            --query 'nodegroup.status' \
+            --output text 2>&1 || echo "NOT_FOUND")
+          
+          echo "Node Group Status: $NODEGROUP_STATUS"
+          
+          if [[ "$NODEGROUP_STATUS" == "DEGRADED" ]] || [[ "$NODEGROUP_STATUS" == "CREATE_FAILED" ]] || [[ "$NODEGROUP_STATUS" == "DELETE_FAILED" ]]; then
+            echo "⚠️ Node group is in unhealthy state: $NODEGROUP_STATUS"
+            echo "Checking health issues..."
+            aws eks describe-nodegroup \
+              --cluster-name ansible-template-eks \
+              --nodegroup-name ansible-template-node-group \
+              --region us-east-1 \
+              --query 'nodegroup.health' \
+              --output json
+            
+            echo ""
+            echo "🔄 Node group needs to be recreated. Marking for replacement..."
+            cd terraform-aws
+            terraform state list | grep aws_eks_node_group.main && \
+              terraform taint aws_eks_node_group.main || \
+              echo "Node group not in state or already tainted"
+            
+            echo "Regenerating plan with node group replacement..."
+            terraform plan -out=tfplan
+          elif [[ "$NODEGROUP_STATUS" == "ACTIVE" ]]; then
+            echo "✓ Node group is ACTIVE, proceeding with update"
+          else
+            echo "Node group status: $NODEGROUP_STATUS"
+          fi
+        continue-on-error: false
+
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
