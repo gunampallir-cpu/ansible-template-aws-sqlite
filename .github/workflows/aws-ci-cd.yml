@@ -563,6 +563,10 @@ jobs:
         with:
           ref: main
 
+      - name: Reinitialize Terraform After Checkout
+        if: steps.nodegroup_check.outputs.need_new_plan == 'true'
+        run: terraform init
+
       - name: Generate New Plan
         if: steps.nodegroup_check.outputs.need_new_plan == 'true'
         run: |
