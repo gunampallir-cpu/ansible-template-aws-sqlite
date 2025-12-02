@@ -514,14 +514,21 @@ jobs:
               --output json
             
             echo ""
-            echo "🔄 Tainting node group to force recreation..."
+            echo "🗑️ Deleting failed node group from AWS before recreation..."
+            aws eks delete-nodegroup \
+              --cluster-name ansible-template-eks \
+              --nodegroup-name ansible-template-node-group \
+              --region us-east-1 || echo "⚠️ Delete command failed, node group may already be deleting"
             
+            echo "⏳ Waiting for node group deletion to complete..."
+            aws eks wait nodegroup-deleted \
+              --cluster-name ansible-template-eks \
+              --nodegroup-name ansible-template-node-group \
+              --region us-east-1 || echo "⚠️ Wait timed out or node group already deleted"
+            
+            echo "✅ Node group deleted, removing from Terraform state..."
             if [[ "$IN_STATE" == "true" ]]; then
-              terraform taint aws_eks_node_group.main
-            else
-              echo "⚠️ Node group not in state, importing first..."
-              terraform import aws_eks_node_group.main "ansible-template-eks:ansible-template-node-group"
-              terraform taint aws_eks_node_group.main
+              terraform state rm aws_eks_node_group.main || echo "⚠️ Already removed from state"
             fi
             
             NEED_NEW_PLAN=true
