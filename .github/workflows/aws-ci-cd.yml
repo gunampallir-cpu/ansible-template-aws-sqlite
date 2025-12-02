@@ -557,10 +557,16 @@ jobs:
           name: tfplan
           path: terraform-aws/
 
+      - name: Checkout Latest Code for New Plan
+        if: steps.nodegroup_check.outputs.need_new_plan == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Generate New Plan
         if: steps.nodegroup_check.outputs.need_new_plan == 'true'
         run: |
-          echo "📝 Generating new plan after state changes..."
+          echo "📝 Generating new plan with latest configuration..."
           terraform plan -out=tfplan
 
       - name: Terraform Apply
